@@ -12,40 +12,59 @@ This plugin is composed of the following components:
 ### Requirements
 ---------------------------------------------------------
 * `python3.6` and above
-* `apache-airflow>=1.10.7`
+* `apache-airflow>=1.10.8`
 
-#### Getting Started
+### Getting Started
 ---------------------------------------------------------
 ```bash
 pip install airflow_webhook_plugin
 ```
+
+Then add the following environment variables:
 
 ```bash
 export AIRFLOW__CORE__EXECUTOR=airflow.plugins.executors.airflow_webhook_plugin.WebhookExecutor
 export AIRFLOW__WEBHOOK__AUTH_TOKEN=<some seceret token>
 ```
 
+#### Example Usage
+---------------------------------------------------------
+Some operators will launch workloads asynchronously. These can be implemented by subclassing the `AsyncOperator`
 ```python
 from airflow.models.dag import DAG
 from airflow.operators.python_operator import PythonOperator
-from airflow_webhook_plugin import WebhookOperatorMixin
-
+from airflow.plugins.operators.airflow_webhook_plugin import AsyncOperator
 
 def launch_some_resource():
-    # Launch a remote workload. Rather than poll for its completion.
-    # The workload will make an API request
-    # to airflow notifying it terminal state
+    # Launch a remote workload. Rather than wait for its completion.
+    # The workload will need to make an API request (see REST API)
+    # to airflow, notifying it terminal state
     pass
 
-class PythonAsyncOperator(PythonOperator, WebhookOperatorMixin):
-    def execute(self):
-        # Launch a remote workload. Rather than poll for its completion.
-        # The workload will make an API request
-        # to airflow notifying it terminal state
-        launch_some_resource()
+class PythonAyncOperator(PythonOperator, AsyncOperator):
+    """
+    Subclass existing PythonOperator, the SyncOperator will make sure
+    to update task state at the end of its execution
+    """
+    pass
 
 with DAG('async_dag') as dag:
-    operator = PythonAsyncOperator()
+    operator = PythonOperator(callable=launch_some_resource)
+```
+
+Some tasks may still be synchronous and will need to be marked done right away.
+These operators will continue to work as before.
+```python
+from airflow.models.dag import DAG
+from airflow.operators.python_operator import PythonOperator
+
+
+def do_some_work():
+    print('Completed some work. Now task will be marked as a "success"')
+
+
+with DAG('sync_dag') as dag:
+    operator = PythonOperator(callable=do_some_work)
 ```
 
 #### REST API Routes
@@ -54,9 +73,8 @@ To update a task instance state from an external service use this:
 * Request: `PATCH <AIRFLOW__WEBSERVER__BASE_URL>/webhook/dag/<dag_id>/task/<task_id>/`
 * Parameters (**Required**):
     * `execution_date`: ISO 8601 string of the related execution date for the task instance
-    * `try_number`: Integer representing the current task instance attempt
     * `state`: Desired state to change. Should be one of `airflow.utils.state.State`
-* Returns a `400` status if parameters are missing, and a `200` for valid requests
+* Returns a `400` status if parameters are invalid/missing, and a `200` for valid requests
 * Example response:
 ```json
 {

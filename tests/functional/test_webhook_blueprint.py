@@ -1,15 +1,10 @@
 from datetime import datetime
 
 import pytz
-from airflow.models import TaskInstance
-from airflow.utils.db import create_session
 from airflow.utils.state import State
 from airflow.www import app
 
 from airflow_webhook_plugin import webhook_blueprint
-from airflow_webhook_plugin.flask_blueprints.webhook_blueprint import (
-    _fetch_task_instance,
-)
 from tests.utils import DatabaseTestCase
 
 
@@ -122,14 +117,3 @@ class TestWebhookBlueprint(DatabaseTestCase):
                 "message": "Task instance state was updated to 'success'.",
             },
         )
-
-    def test_fetch_task_instance(self):
-        # Should be able to return task instance
-        # originally created in setUp of test case
-        # dag_id, task_id, and execution_date are primary keys
-        # for TaskInstance model so use to fetch the same instance
-        with create_session() as session:
-            task_instance = _fetch_task_instance(
-                session, self.dag_id, self.task_id, self.execution_date
-            )
-            self.assertTrue(task_instance, TaskInstance)
