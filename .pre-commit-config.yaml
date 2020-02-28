@@ -5,17 +5,17 @@
         exclude: \.html$
     -   id: end-of-file-fixer
         exclude: \.html$
-    -   id: autopep8-wrapper
-        args: ['-i', '--ignore=E309,E501']
     -   id: check-json
     -   id: check-yaml
     -   id: debug-statements
         language_version: python3.6
     -   id: requirements-txt-fixer
-    -   id: flake8
-        exclude: \/migrations\/|templates\/
-        language_version: python3.6
 -   repo: https://github.com/pre-commit/pre-commit
     rev: v1.4.0
     hooks:
     -   id: validate_manifest
+-   repo: https://github.com/psf/black
+    rev: stable
+    hooks:
+    -   id: black
+        language_version: python3.6

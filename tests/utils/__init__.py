@@ -26,10 +26,7 @@ class DatabaseTestCase(TestCase):
             session.commit()
 
     def create_dag_artifacts(
-        self,
-        dag_id: str,
-        task_id: str,
-        execution_date: datetime,
+        self, dag_id: str, task_id: str, execution_date: datetime,
     ) -> (DAG, DummyOperator, TaskInstance):
         """
         Seed a DAG, task, and task instance
@@ -41,20 +38,11 @@ class DatabaseTestCase(TestCase):
         """
         # Seed a DAG, task, and task instance
         self.dag = DAG(
-            dag_id=dag_id,
-            start_date=execution_date,
-            max_active_runs=1,
-            concurrency=2
+            dag_id=dag_id, start_date=execution_date, max_active_runs=1, concurrency=2
         )
-        self.task = DummyOperator(
-            task_id=task_id,
-            dag=self.dag,
-            task_concurrency=0
-        )
+        self.task = DummyOperator(task_id=task_id, dag=self.dag, task_concurrency=0)
         self.task_instance = TaskInstance(
-            task=self.task,
-            execution_date=execution_date,
-            state=State.QUEUED
+            task=self.task, execution_date=execution_date, state=State.QUEUED
         )
         with create_session() as session:
             session.add(self.task_instance)

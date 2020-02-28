@@ -18,20 +18,18 @@ class TestWebhookBlueprint(DatabaseTestCase):
         super().setUp()
 
         # Setup DAG, task, and task_instance
-        self.dag_id = 'example_dag'
-        self.task_id = 'example_task'
+        self.dag_id = "example_dag"
+        self.task_id = "example_task"
         self.execution_date = datetime(2020, 1, 1, tzinfo=pytz.UTC)
         self.create_dag_artifacts(
-            self.dag_id,
-            self.task_id,
-            self.execution_date,
+            self.dag_id, self.task_id, self.execution_date,
         )
 
         # Initialize a flask test client and register the blueprint
         # so we can test the blueprint's routes
         self.app = app.create_app(config=None, testing=True)
         # Disable CSRF checks for testing
-        self.app.config['WTF_CSRF_ENABLED'] = False
+        self.app.config["WTF_CSRF_ENABLED"] = False
         with self.app.app_context():
             self.webhook_bluerint = webhook_blueprint
             self.app.register_blueprint(self.webhook_bluerint)
@@ -40,75 +38,69 @@ class TestWebhookBlueprint(DatabaseTestCase):
     def test_update_task_state_endpoint_verifies_parameters(self):
         # Should fail if no parameters passed
         response = self.client.patch(
-            f'webhook/dag/{self.dag_id}/task/{self.task_id}/',
-            json={}
+            f"webhook/dag/{self.dag_id}/task/{self.task_id}/", json={}
         )
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
-        self.assertIn('Missing parameter', data['error'])
+        self.assertIn("Missing parameter", data["error"])
 
         # Should fail if not all parameters passed
         response = self.client.patch(
-            f'webhook/dag/{self.dag_id}/task/{self.task_id}/',
-            json={
-                'execution_date': '2020-01-01T00:00:00+00:00',
-            }
+            f"webhook/dag/{self.dag_id}/task/{self.task_id}/",
+            json={"execution_date": "2020-01-01T00:00:00+00:00",},
         )
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
         # Should reference missing field in error message
-        self.assertIn('Missing parameter', data['error'])
-        self.assertIn('state', data['error'])
+        self.assertIn("Missing parameter", data["error"])
+        self.assertIn("state", data["error"])
 
     def test_update_task_state_endpoint_handles_invalid_timestamps(self):
         # Should fail if no parameters passed
         response = self.client.patch(
-            f'webhook/dag/{self.dag_id}/task/{self.task_id}/',
-            json={
-                'execution_date': 'fake timestamp',
-                'state': State.SUCCESS,
-            }
+            f"webhook/dag/{self.dag_id}/task/{self.task_id}/",
+            json={"execution_date": "fake timestamp", "state": State.SUCCESS,},
         )
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
         # Should reference missing field in error message
-        self.assertIn('Invalid timestamp', data['error'])
+        self.assertIn("Invalid timestamp", data["error"])
 
     def test_update_task_state_endpoint_handles_invalid_state(self):
         # Should fail if no parameters passed
         response = self.client.patch(
-            f'webhook/dag/{self.dag_id}/task/{self.task_id}/',
+            f"webhook/dag/{self.dag_id}/task/{self.task_id}/",
             json={
-                'execution_date': '2020-01-01T00:00:00+00:00',
-                'state': 'invalid_state',
-            }
+                "execution_date": "2020-01-01T00:00:00+00:00",
+                "state": "invalid_state",
+            },
         )
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
         # Should reference missing field in error message
-        self.assertIn('Invalid state', data['error'])
+        self.assertIn("Invalid state", data["error"])
 
     def test_update_task_state_returns_error_for_no_instance(self):
         # Request a state change for a non-existent task on the DAG
         response = self.client.patch(
-            f'webhook/dag/{self.dag_id}/task/non_existent_task/',
+            f"webhook/dag/{self.dag_id}/task/non_existent_task/",
             json={
-                'execution_date': '2020-01-01T00:00:00+00:00',
-                'state': State.SUCCESS,
-            }
+                "execution_date": "2020-01-01T00:00:00+00:00",
+                "state": State.SUCCESS,
+            },
         )
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
         # Should indicate in error message object does not exist
-        self.assertIn('does not exist', data['error'])
+        self.assertIn("does not exist", data["error"])
 
     def test_update_task_state_updates_task_instance_state(self):
         response = self.client.patch(
-            f'webhook/dag/{self.dag_id}/task/{self.task_id}/',
+            f"webhook/dag/{self.dag_id}/task/{self.task_id}/",
             json={
-                'execution_date': '2020-01-01T00:00:00+00:00',
-                'state': State.SUCCESS,
-            }
+                "execution_date": "2020-01-01T00:00:00+00:00",
+                "state": State.SUCCESS,
+            },
         )
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
@@ -121,14 +113,14 @@ class TestWebhookBlueprint(DatabaseTestCase):
         self.assertEqual(
             data,
             {
-                'dag_id': self.dag_id,
-                'task_id': self.task_id,
-                'try_number': 1,
-                'state': State.SUCCESS,
-                'previous_state': State.QUEUED,
-                'execution_date': '2020-01-01T00:00:00+00:00',
-                'message': "Task instance state was updated to 'success'."
-            }
+                "dag_id": self.dag_id,
+                "task_id": self.task_id,
+                "try_number": 1,
+                "state": State.SUCCESS,
+                "previous_state": State.QUEUED,
+                "execution_date": "2020-01-01T00:00:00+00:00",
+                "message": "Task instance state was updated to 'success'.",
+            },
         )
 
     def test_fetch_task_instance(self):
@@ -138,9 +130,6 @@ class TestWebhookBlueprint(DatabaseTestCase):
         # for TaskInstance model so use to fetch the same instance
         with create_session() as session:
             task_instance = _fetch_task_instance(
-                session,
-                self.dag_id,
-                self.task_id,
-                self.execution_date
+                session, self.dag_id, self.task_id, self.execution_date
             )
             self.assertTrue(task_instance, TaskInstance)

@@ -1,5 +1,5 @@
 # airflow_webhook_plugin
-=========================================================
+---------------------------------------------------------
 Airflow plugin to support asynchronous task execution. This can be useful when running tasks with long-duration where the task can instead notify Airflow upon completion.
 
 The executor will launch Airflow tasks but will not mark the task as complete. It is up to the task, or the resources spawned by the task to notify Airflow that the task is complete or failed. This can be done via the API exposed by this plugin.
