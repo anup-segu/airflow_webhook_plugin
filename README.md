@@ -11,7 +11,7 @@ This plugin is composed of the following components:
 
 ### Requirements
 ---------------------------------------------------------
-* `python3.6` and above
+* `python3.6` or above
 * `apache-airflow>=1.10.8`
 
 ### Getting Started
@@ -23,7 +23,7 @@ pip install airflow_webhook_plugin
 Then add the following environment variables:
 
 ```bash
-export AIRFLOW__CORE__EXECUTOR=airflow.plugins.executors.airflow_webhook_plugin.WebhookExecutor
+export AIRFLOW__CORE__EXECUTOR=airflow_webhook_plugin.WebhookExecutor
 export AIRFLOW__WEBHOOK__AUTH_TOKEN=<some seceret token>
 ```
 
@@ -33,7 +33,7 @@ Some operators will launch workloads asynchronously. These can be implemented by
 ```python
 from airflow.models.dag import DAG
 from airflow.operators.python_operator import PythonOperator
-from airflow.plugins.operators.airflow_webhook_plugin import AsyncOperator
+from airflow.plugins.operators.airflow_webhook_plugin.async_operator import AsyncOperator
 
 def launch_some_resource():
     # Launch a remote workload. Rather than wait for its completion.

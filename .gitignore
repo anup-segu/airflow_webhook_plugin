@@ -18,3 +18,5 @@ Makefile.docker
 notes.md
 dags/
 .env*
+tests/fixtures/logs/*
+tests/fixtures/*.db

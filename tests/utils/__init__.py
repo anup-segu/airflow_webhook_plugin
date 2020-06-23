@@ -1,17 +1,19 @@
 from datetime import datetime
 from unittest import TestCase
 
+import pytz
 from airflow import DAG
-from airflow.models import TaskInstance
-from airflow.operators.dummy_operator import DummyOperator
+from airflow.models import TaskInstance, DagRun, DagModel, DagTag, DagBag
 from airflow.utils.db import create_session
 from airflow.utils.state import State
 
+TEST_DAG_FOLDER = "tests/fixtures/dags/"
+
 
 class DatabaseTestCase(TestCase):
-    """
-    Helper base TestCase to handle database cleanup
-    """
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.dag_bag = DagBag(dag_folder=TEST_DAG_FOLDER)
 
     def setUp(self) -> None:
         self.purge_database()
@@ -19,33 +21,70 @@ class DatabaseTestCase(TestCase):
     def tearDown(self) -> None:
         self.purge_database()
 
-    def purge_database(self) -> None:
+    @staticmethod
+    def purge_database() -> None:
         # Clean up test artifacts in database
         with create_session() as session:
+            session.query(DagRun).delete()
             session.query(TaskInstance).delete()
-            session.commit()
+            session.query(DagTag).delete()
+            session.query(DagModel).delete()
 
-    def create_dag_artifacts(
-        self, dag_id: str, task_id: str, execution_date: datetime,
-    ) -> (DAG, DummyOperator, TaskInstance):
+    def create_dag(
+        self,
+        dag_id: str,
+        start_date: datetime,
+        is_paused_upon_creation=False,
+        **dag_kwargs,
+    ) -> DAG:
         """
-        Seed a DAG, task, and task instance
+        Create a DAG python instance to be used
 
         :param dag_id: str
-        :param task_id: str
-        :param execution_date: datetime
+        :param start_date: datetime
+        :param is_paused_upon_creation: bools
+
+        :return: DAG
+        """
+        return DAG(
+            dag_id=dag_id,
+            start_date=start_date.replace(tzinfo=pytz.UTC),
+            default_args={"owner": "test@yipitdata.com"},
+            is_paused_upon_creation=is_paused_upon_creation,
+            full_filepath=f"{TEST_DAG_FOLDER}/{dag_id}.py",
+            **dag_kwargs,
+        )
+
+    def create_dag_db_resources(
+        self, dag: DAG, execution_date: datetime, state: State = State.SUCCESS
+    ) -> None:
+        """
+        Seed a DAG, DAG run, and related task instances in the Database
+        By default will create artifacts for a completed run
+
+        :param dag: DAG
+        :param execution_date: datetime execution date for DAG run
+        :param state: Starting state for DAG runs
         :return:
         """
-        # Seed a DAG, task, and task instance
-        self.dag = DAG(
-            dag_id=dag_id, start_date=execution_date, max_active_runs=1, concurrency=2
-        )
-        self.task = DummyOperator(task_id=task_id, dag=self.dag, task_concurrency=0)
-        self.task_instance = TaskInstance(
-            task=self.task, execution_date=execution_date, state=State.QUEUED
-        )
         with create_session() as session:
-            session.add(self.task_instance)
-            session.commit()
+            # Save the dag to the DB
+            dag.sync_to_db(session=session)
+            orm_dag = DagModel.get_current(dag.dag_id)
+            # Also update the DAG file location so that DagBag instances can fetch it
+            orm_dag.fileloc = f"{TEST_DAG_FOLDER}/{dag.dag_id}.py"
+            session.add(orm_dag)
 
-            return self.dag, self.task, self.task_instance
+            # Create a DAG run in the DB
+            dag.create_dagrun(
+                f"{dag.dag_id}_test_run",
+                state,
+                execution_date=execution_date,
+                session=session,
+            )
+            session.query(TaskInstance).all()
+
+            # Create task instances for the DAG in the DB
+            for task in dag.tasks:
+                ti = TaskInstance(task=task, execution_date=execution_date, state=state)
+                ti.set_state(state, session=session)

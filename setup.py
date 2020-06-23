@@ -52,4 +52,9 @@ if __name__ == "__main__":
         dependency_links=dependency_links,
         classifiers=["Programming Language :: Python",],
         zip_safe=False,
+        entry_points={
+            "airflow.plugins": [
+                "airflow_webhook_plugin = airflow_webhook_plugin:AirflowWebhookPlugin"
+            ]
+        },
     )

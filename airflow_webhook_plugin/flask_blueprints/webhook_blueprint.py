@@ -1,5 +1,6 @@
 from airflow.utils.db import create_session
 from airflow.utils.state import State
+from airflow.www.app import csrf
 from flask import Blueprint, request, jsonify, Response
 import pendulum
 from pendulum.parsing.exceptions import ParserError
@@ -13,6 +14,7 @@ webhook_blueprint = Blueprint("webhook", __name__, url_prefix="/webhook",)
 @webhook_blueprint.route(
     "/dag/<dag_id>/task/<task_id>/", methods=["PATCH"],
 )
+@csrf.exempt
 def update_task_state(dag_id: str, task_id: str) -> (Response, int):
     """
     For a given task instance, update the state in the Database.
